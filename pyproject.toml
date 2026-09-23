@@ -1,0 +1,59 @@
+[project]
+name = "trdata-analysis"
+version = "0.1.0"
+description = "Harmonized thermal-runaway corpus and early-detection benchmark"
+readme = "README.md"
+requires-python = ">=3.11,<3.14"
+
+dependencies = [
+    # corpus construction
+    "pandas>=2.2",
+    "numpy>=1.26",
+    "scipy>=1.13",
+    "pyarrow>=16",          # parquet
+    "h5py>=3.11",           # #1 stores raw data as MATLAB v7.3 (HDF5)
+    "openpyxl>=3.1",        # #4 and #9 ship .xlsx
+    "pypdf>=5.0",           # reading the dataset papers during the audit
+
+    # model panel
+    "scikit-learn>=1.5",
+    "xgboost>=2.1",
+    "lightgbm>=4.5",
+    "aeon>=1.0",            # MultiRocket-Hydra, the convolution entry
+    "torch>=2.7",           # RTX 5080 is sm_120 and needs a cu128 build
+    "mambapy>=1.2",         # pure-torch Mamba: mamba_ssm has no Windows wheel
+]
+
+[project.optional-dependencies]
+# TabPFN downloads its weights only after a one-time licence acceptance on a
+# Prior Labs account, so it stays out of the default install: `uv sync` must not
+# require anyone to agree to a third-party licence.
+#   uv sync --extra tabpfn     then  uv run python -c "from tabpfn import TabPFNClassifier"
+tabpfn = ["tabpfn>=2.0"]
+
+# The foundation tier. Both are forecasters, used here as frozen encoders with a
+# survival head on top (see run_deep.py). Kept optional because between them
+# they pull ~2 GB of weights and a full transformers stack.
+foundation = [
+    "chronos-forecasting>=2.0",   # Chronos-2: encoder-only, 120M, multivariate
+    "timesfm[torch]>=2.0",        # TimesFM 2.5: 200M, univariate
+    "transformers>=4.56",
+]
+paper = [
+    "matplotlib>=3.8",
+]
+
+[tool.uv]
+# torch's CUDA builds live on PyTorch's own index, not PyPI
+environments = ["sys_platform == 'win32'", "sys_platform == 'linux'"]
+
+[[tool.uv.index]]
+name = "pytorch-cu128"
+url = "https://download.pytorch.org/whl/cu128"
+explicit = true
+
+[tool.uv.sources]
+torch = [{ index = "pytorch-cu128" }]
+
+[tool.setuptools]
+packages = []

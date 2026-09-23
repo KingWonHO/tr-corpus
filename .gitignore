@@ -1,0 +1,13 @@
+__pycache__/
+*.pyc
+.venv/
+# the corpus itself comes from Zenodo (10.5281/zenodo.22908328) and is unpacked here
+tr-corpus/registry/
+tr-corpus/splits/
+tr-corpus/scalers/
+tr-corpus/measured/
+tr-corpus/simulated/
+tr-corpus/windows/
+tr-corpus/features/
+tr-corpus/external/
+Dataset/
