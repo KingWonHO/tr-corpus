@@ -53,9 +53,17 @@ def main():
                     help="NONCAUSAL control: change only BAK gas interpolation")
     ap.add_argument("--out", default=None,
                     help="fresh CSV path for a versioned supplement")
+    ap.add_argument("--curves", default=None,
+                    help="directory for per-fold risk traces (detection-FAR curves at matched check FAR)")
+    ap.add_argument("--horizon", type=float, default=R.HORIZON_S,
+                    help="training horizon in seconds for the hazard target "
+                         "(default 60; a longer horizon is a separate run and "
+                         "requires --out)")
     a = ap.parse_args()
     if a.without_age and not a.out:
         raise ValueError("--without-age requires a separate --out to preserve other representations")
+    if a.horizon != R.HORIZON_S and not a.out:
+        raise ValueError("a non-default --horizon requires a separate --out")
     t0 = time.time()
     models = a.models.split(",")
 
@@ -100,7 +108,8 @@ def main():
         if a.arm == "e11":
             part = V.frozen_external(d, meta, reg, models, "M1", a.budget, seed)
         else:
-            part = V.crossfit_loeo(d, meta, reg, models, ARMS[a.arm], a.budget, seed)
+            part = V.crossfit_loeo(d, meta, reg, models, ARMS[a.arm], a.budget, seed,
+                                   horizon=a.horizon, curve_dir=a.curves)
         part["seed"] = seed
         runs.append(part)
         res = pd.concat(runs, ignore_index=True)

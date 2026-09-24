@@ -136,7 +136,7 @@ class Plan:
 
 # ------------------------------------------------------------------ the modes
 def crossfit_loeo(d, meta, reg, models, panels, budget=BUDGET, seed=0,
-                  verbose=True):
+                  verbose=True, horizon=R.HORIZON_S, curve_dir=None):
     """LOEO with a fold-specific, source-calibrated threshold.
 
     Returns one row per (model, panel, held, onset definition).  `tau` and
@@ -157,7 +157,7 @@ def crossfit_loeo(d, meta, reg, models, panels, budget=BUDGET, seed=0,
                 continue
             for m in models:
                 r_te, r_cal, r_chk = R.run_fold(
-                    d, cols, m, tr, [te, plan.cal_neg, plan.test_neg], seed)
+                    d, cols, m, tr, [te, plan.cal_neg, plan.test_neg], seed, horizon)
 
                 # tau sees the calibration negatives and nothing else
                 tau = SV.calibrate_threshold(
@@ -175,6 +175,24 @@ def crossfit_loeo(d, meta, reg, models, panels, budget=BUDGET, seed=0,
                     np.ones(len(plan.test_neg), bool), tau)
                 tg = plan.trig.get(held, np.nan)
                 pre = bool(alarm is not None and np.isfinite(tg) and alarm < tg)
+                if curve_dir is not None:
+                    # Per-fold traces for a detection-FAR curve at matched
+                    # check FAR (review 2026-09-24): the held cell's running-
+                    # maximum risk and the per-experiment peak risks of the
+                    # calibration and check negatives.  Nothing here changes
+                    # the alarm above.
+                    import os
+                    os.makedirs(curve_dir, exist_ok=True)
+                    cal_peak = pd.Series(np.asarray(r_cal, float)).groupby(
+                        d["experiment"][plan.cal_neg]).max()
+                    chk_peak = pd.Series(np.asarray(r_chk, float)).groupby(
+                        d["experiment"][plan.test_neg]).max()
+                    np.savez_compressed(
+                        os.path.join(curve_dir, "%s_%s_s%d_%s.npz" % (m, panel, seed, held.replace("/", "__"))),
+                        t=t_h, risk_running_max=np.maximum.accumulate(np.asarray(r_h, float)),
+                        tau=np.float64(tau), t_trigger=np.float64(tg),
+                        cal_peaks=cal_peak.to_numpy(float), cal_keys=np.asarray(cal_peak.index, str),
+                        check_peaks=chk_peak.to_numpy(float), check_keys=np.asarray(chk_peak.index, str))
 
                 for name, onset in plan.onsets.items():
                     on = onset.get(held, np.nan)

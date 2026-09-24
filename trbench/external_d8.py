@@ -49,7 +49,9 @@ FROZEN = {
     "tr-corpus/results/validation_20260921_seq_matched/calibration.csv": "2032fcc5458b73f8061a19a01c9833927ed428600bbadfd6140d9e165672e50b",
     "trbench/common.py": "624ca4be7c7cb9e1290560525c456ed90b4b69e62e20644170ba8c482a0aa09b",
     "trbench/native_windows.py": "ff8faa62beac44de281deb2530ae26cabfa4462774dc8bf884d3762a9857177a",
-    "trbench/run_validation.py": "9920a92d8448a750641d096ccf3de2939eddefb4af25e0e650478af811c8981c",
+    # run_validation.py re-pinned 2026-09-24 after adding the --horizon option and the
+    # mask_only / age_only shortcut-control arms; the scoring functions reused here are unchanged.
+    "trbench/run_validation.py": "c27f0e680fe4b991a54815a8c4485dd8fe44f71c82f9e91d79d79366e21b5f18",
     "trbench/schema.py": "56393ca4fcba95e081a145d46735e072e066c4717e859516b0bd132645654a90",
 }
 

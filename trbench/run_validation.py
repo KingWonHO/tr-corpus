@@ -29,7 +29,12 @@ import run_e3 as R
 import survival as SV
 
 HORIZONS = (300, 900, 1800, 3600)
-REPRESENTATIONS = {"no_age", "with_age", "surface_max_only", "surface_mean_only"}
+REPRESENTATIONS = {"no_age", "with_age", "surface_max_only", "surface_mean_only",
+                   "mask_only", "age_only"}
+# Shortcut controls (2026-09-24, reviewer request): `mask_only` gives a model
+# the channel-availability pattern of the M1 panel and no sensor value at all;
+# `age_only` gives it the per-channel observation ages and nothing else.  Any
+# separation they achieve is a domain cue, not battery physics.
 
 
 def wilson(k, n):
@@ -139,19 +144,25 @@ def representation_mask(names, mode):
     if mode == "surface_mean_only":
         return names == "T_surface_mean"
     select = MW.panel_mask(names, "M1")
+    age = np.array([s.startswith("age__") or s == MW.AGE_CH for s in names])
+    if mode == "age_only":
+        return select & age
+    if mode == "mask_only":
+        return select & ~age
     if mode == "no_age":
         select &= np.array([not s.startswith("age__") and s != MW.AGE_CH
                             for s in names])
     return select
 
 
-def run(d, meta, reg, models, seeds, age_modes, out, n_boot=1000, budget=.1):
+def run(d, meta, reg, models, seeds, age_modes, out, n_boot=1000, budget=.1,
+        horizon=R.HORIZON_S):
     plan = V.Plan(d, meta, reg, ["M1"])
     target = np.char.startswith(plan.ds, V.TARGET + "/")
     src_pos = np.flatnonzero((d["split"] == "test") & ~target & (d["y_tr"] == 1) & plan.observed)
     arc = np.flatnonzero(target & plan.observed)
     arc_neg = np.flatnonzero(target & (d["y_tr"] == 0) & plan.observed)
-    y, w = SV.discrete_hazard_targets(d["y_time"], d["y_event"], R.HORIZON_S)
+    y, w = SV.discrete_hazard_targets(d["y_time"], d["y_event"], horizon)
     membership = []
     for role, idx in [("train", plan.frozen_train), ("calibration", plan.cal_neg),
                       ("source_test_negative", plan.test_neg),
@@ -167,6 +178,12 @@ def run(d, meta, reg, models, seeds, age_modes, out, n_boot=1000, budget=.1):
             select &= ~age_cols
         cols = np.flatnonzero(select)
         F = summary_features(d, cols)
+        # window_features lays out nine blocks of len(cols): eight value
+        # statistics and, last, the per-channel availability fraction.
+        if age_mode == "mask_only":
+            F = F[:, 8 * len(cols):]
+        elif age_mode == "age_only":
+            F = F[:, :8 * len(cols)]
         for model in models:
             # The physical rule must not differentiate the observation clock.
             if model == "rule" and age_mode != age_modes[0]:
@@ -181,6 +198,8 @@ def run(d, meta, reg, models, seeds, age_modes, out, n_boot=1000, budget=.1):
                     # Sequence models consume the window tensor, not the summary
                     # features; everything downstream is identical.
                     Xs, Ms = d["X"][:, :, cols], d["mask"][:, :, cols]
+                    if age_mode == "mask_only":
+                        Xs = np.zeros_like(Xs)
                     predict_seq = DEEP.fit_seq(model, Xs[plan.frozen_train], Ms[plan.frozen_train],
                                                y[plan.frozen_train], w[plan.frozen_train], seed)
                     score = lambda idx: np.asarray(predict_seq(Xs[idx], Ms[idx]), float)
@@ -291,6 +310,8 @@ def main():
     ap.add_argument("--ages", default="no_age,with_age")
     ap.add_argument("--bootstrap", type=int, default=1000)
     ap.add_argument("--out", required=True)
+    ap.add_argument("--horizon", type=float, default=R.HORIZON_S,
+                    help="training horizon in seconds for the hazard target (default 60)")
     a = ap.parse_args()
     out = Path(a.out)
     if out.exists() and any(out.iterdir()):
@@ -317,7 +338,7 @@ def main():
         seeds_are_not_additional_cells=True)
     (out / "manifest.json").write_text(json.dumps(manifest, indent=2), encoding="utf-8")
     run(d, meta, reg, a.models.split(","), [int(s) for s in a.seeds.split(",")],
-        a.ages.split(","), out, n_boot=a.bootstrap)
+        a.ages.split(","), out, n_boot=a.bootstrap, horizon=a.horizon)
 
 
 if __name__ == "__main__":

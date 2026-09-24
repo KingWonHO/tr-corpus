@@ -39,7 +39,7 @@ import run_validation as RV   # noqa: E402  (scoring rules reused, not re-implem
 import survival as SV         # noqa: E402
 
 RES = ROOT / "tr-corpus" / "results"
-OUT = RES / "claims_20260921"
+OUT = RES / "claims_20260924"   # amended verdict rule; claims_20260921 holds the pre-registered run
 WIN = ROOT / "tr-corpus" / "windows" / "W60_native"
 SPLITS = ("train", "val", "test", "test_zeroshot")      # order of the stored indices
 RUNS = {"native_final": RES / "validation_20260914_native_final",
@@ -83,7 +83,9 @@ FROZEN = {
     "tr-corpus/results/validation_20260915_e3a_d3_relabel/validation_20260914_e3a_native_xgb_s1to4.csv": "1adaaca183441a92bbec2e7343ce48a7be109d61e8508e4fb4d25139d65e653e",
     "tr-corpus/results/validation_20260915_e3a_d3_relabel/validation_20260914_e3a_native_lgb_s1to4.csv": "a003457b57032be23b34e65b69d6985e9d4a76eb72ffef567e66324d95be5bb1",
     "trbench/survival.py": "c4544d471c9d2f5b7309f3464c52ee788caa6f062c49e14a33920d5aa70c1f73",
-    "trbench/run_validation.py": "9920a92d8448a750641d096ccf3de2939eddefb4af25e0e650478af811c8981c",
+    # run_validation.py re-pinned 2026-09-24 after adding the --horizon option and the
+    # mask_only / age_only shortcut-control arms; the scoring functions reused here are unchanged.
+    "trbench/run_validation.py": "c27f0e680fe4b991a54815a8c4485dd8fe44f71c82f9e91d79d79366e21b5f18",
 }
 
 
@@ -105,8 +107,43 @@ def cp_upper(k, n, conf=0.95):
     return 1.0 if k >= n else float(beta.ppf(conf, k + 1, n - k))
 
 
+def cp_lower(k, n, conf=0.95):
+    """One-sided Clopper-Pearson lower bound."""
+    if n == 0:
+        return float("nan")
+    return 0.0 if k <= 0 else float(beta.ppf(1.0 - conf, k, n - k + 1))
+
+
 def verdict(k, n, alpha=ALPHA):
-    """Protocol section 5, applied in order."""
+    """Amended rule (2026-09-24), applied in order.
+
+    The pre-registered rule (protocol section 5) checked the pool size first
+    and returned ``insufficient evidence`` for every pool below n_min(alpha),
+    whatever it observed.  That conflated two questions: a pool below 29 cannot
+    *support* a 10 % bound with zero alarms, but it can still show that the
+    bound is *exceeded* -- 21 alarms in 21 records has a one-sided 95 % lower
+    bound of 0.87.  The amended rule asks both questions symmetrically and
+    keeps the observed rate as a separate column:
+
+        supported          one-sided 95 % upper bound <= alpha
+        budget exceeded    one-sided 95 % lower bound  > alpha
+        inconclusive       neither, qualified by the observed rate
+
+    ``n_min`` (29 for alpha = 0.10) remains the smallest pool that can return
+    ``supported``; it is no longer a gate on the other verdicts.  The original
+    labels are kept in ``verdict_original`` where both are tabulated.
+    """
+    if n == 0:
+        return "not assessable"
+    if cp_upper(k, n) <= alpha:
+        return "supported"
+    if cp_lower(k, n) > alpha:
+        return "budget exceeded"
+    return "inconclusive (observed %s alpha)" % ("<=" if k / n <= alpha else ">")
+
+
+def verdict_original(k, n, alpha=ALPHA):
+    """The pre-registered rule, retained for the audit trail."""
     if n == 0:
         return "not assessable"
     if n < n_min(alpha):
@@ -244,13 +281,18 @@ def decision_map(n_max=300, alpha=ALPHA):
     for n in range(1, n_max + 1):
         v = [verdict(k, n, alpha) for k in range(n + 1)]
         sup = [k for k, x in enumerate(v) if x == "supported"]
-        wit = [k for k, x in enumerate(v) if x == "within budget, not supported"]
-        fail = [k for k, x in enumerate(v) if x == "observed fail"]
+        inc = [k for k, x in enumerate(v) if x.startswith("inconclusive")]
+        exc = [k for k, x in enumerate(v) if x == "budget exceeded"]
+        vo = [verdict_original(k, n, alpha) for k in range(n + 1)]
+        fail_o = [k for k, x in enumerate(vo) if x == "observed fail"]
         rows.append(dict(n=n, verdict_at_k0=v[0],
                          k_supported_max=max(sup) if sup else np.nan,
-                         k_within_budget_max=max(wit) if wit else np.nan,
-                         k_observed_fail_min=min(fail) if fail else np.nan,
-                         reachable="|".join(sorted(set(x.split(" (")[0] for x in v)))))
+                         k_inconclusive_min=min(inc) if inc else np.nan,
+                         k_inconclusive_max=max(inc) if inc else np.nan,
+                         k_exceeded_min=min(exc) if exc else np.nan,
+                         reachable="|".join(sorted(set(x.split(" (")[0] for x in v))),
+                         original_verdict_at_k0=vo[0].split(" (")[0],
+                         original_k_observed_fail_min=min(fail_o) if fail_o else np.nan))
     return pd.DataFrame(rows)
 
 
@@ -275,11 +317,16 @@ def operating_characteristics(alpha=ALPHA):
         for p in ps:
             pmf = binom.pmf(np.arange(n + 1), n, p)
             v = _verdict_probabilities(pmf, n, alpha)
+            vo = {}
+            for k, w in enumerate(pmf):
+                key = verdict_original(k, n, alpha).split(" (")[0]
+                vo[key] = vo.get(key, 0.0) + float(w)
             rows.append(dict(n=n, true_p=p, expected_alarms=n * p,
                              p_supported=v.get("supported", 0.0),
-                             p_within_budget=v.get("within budget, not supported", 0.0),
-                             p_observed_fail=v.get("observed fail", 0.0),
-                             p_insufficient=v.get("insufficient evidence", 0.0)))
+                             p_inconclusive=v.get("inconclusive", 0.0),
+                             p_exceeded=v.get("budget exceeded", 0.0),
+                             original_p_observed_fail=vo.get("observed fail", 0.0),
+                             original_p_insufficient=vo.get("insufficient evidence", 0.0)))
     return pd.DataFrame(rows)
 
 
@@ -323,7 +370,7 @@ def cluster_sensitivity(alpha=ALPHA):
                 v = _verdict_probabilities(pmf, n, alpha)
                 rows.append(dict(n=n, cluster_size=m, clusters=n // m, true_p=p, icc=rho,
                                  p_supported=v.get("supported", 0.0),
-                                 p_observed_fail=v.get("observed fail", 0.0)))
+                                 p_exceeded=v.get("budget exceeded", 0.0)))
     return pd.DataFrame(rows)
 
 
@@ -339,7 +386,8 @@ def rule_illustration(alpha=ALPHA):
     rows = []
     for _, a in audit[audit.n_eligible == 0].head(1).iterrows():
         rows.append(dict(pool="%s, H=%d s" % (a.pool, a.H_s), setting="any", k=0, n=0,
-                         observed=np.nan, cp_upper95=np.nan, verdict=verdict(0, 0, alpha), status="real pool"))
+                         observed=np.nan, cp_upper95=np.nan, cp_lower95=np.nan, verdict=verdict(0, 0, alpha),
+                         verdict_original=verdict_original(0, 0, alpha), status="real pool"))
     f = far[(far.run.isin(MAIN_RUNS)) & (far.representation == "no_age") & (far.tau_kind == "full")
             & (far.H_s == H_PRIMARY) & (far.segment.isin(["head", "full"]))]
     for seg in ("head", "full"):
@@ -523,7 +571,10 @@ def calibrate_all(d, plan):
                         far_rows.append(dict(run=s.run, model=s.model, representation=s.representation, seed=s.seed,
                                              tau_kind=kind, tau=tau, H_s=H, pool=pool, segment=seg, n=n, k=k,
                                              far=k / n if n else np.nan, cp_upper95=cp_upper(k, n),
-                                             verdict=(verdict(k, n) if seg == "head" else ""),
+                                             cp_lower95=cp_lower(k, n),
+                                             verdict=verdict(k, n),
+                                             verdict_original=verdict_original(k, n),
+                                             verdict_is_primary=seg == "head",
                                              exploratory=pool == "D6"))
             for pool, (idx, risk) in pos.items():
                 pr, pre_med = _detection(d, idx, risk, tau, plan)
@@ -615,7 +666,9 @@ def split_sensitivity(d, plan):
             row["eval_%s_k" % seg], row["eval_%s_n" % seg] = k, n
             row["eval_%s_far" % seg] = k / n if n else np.nan
             row["eval_%s_cp95" % seg] = cp_upper(k, n)
+            row["eval_%s_cp95_lower" % seg] = cp_lower(k, n)
             row["eval_%s_verdict" % seg] = verdict(k, n)
+            row["eval_%s_verdict_original" % seg] = verdict_original(k, n)
         arc_idx, arc_risk = z["arc_idx"], np.asarray(z["arc_risk"], float)
         neg = d["y_tr"][arc_idx] == 0
         for seg, (k_, n_) in _neg_rates(d, arc_idx[neg], arc_risk[neg], tau, H_PRIMARY).items():

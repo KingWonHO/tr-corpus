@@ -25,13 +25,26 @@ class Bounds(unittest.TestCase):
 
 
 class Verdict(unittest.TestCase):
+    """Amended rule (2026-09-24): symmetric upper/lower one-sided bounds."""
+
     def test_order(self):
         self.assertEqual(CL.verdict(0, 0), "not assessable")
-        self.assertTrue(CL.verdict(0, 26).startswith("insufficient evidence (observed <="))
-        self.assertTrue(CL.verdict(5, 21).startswith("insufficient evidence (observed >"))
-        self.assertEqual(CL.verdict(10, 50), "observed fail")
+        self.assertTrue(CL.verdict(0, 26).startswith("inconclusive (observed <="))
+        self.assertTrue(CL.verdict(5, 21).startswith("inconclusive (observed >"))
+        self.assertEqual(CL.verdict(21, 21), "budget exceeded")      # lower bound 0.87
+        self.assertEqual(CL.verdict(10, 50), "budget exceeded")
         self.assertEqual(CL.verdict(0, 60), "supported")
-        self.assertEqual(CL.verdict(4, 50), "within budget, not supported")
+        self.assertTrue(CL.verdict(4, 50).startswith("inconclusive (observed <="))
+        # a small pool can exceed the budget but never support it
+        self.assertEqual(CL.verdict(6, 21), "budget exceeded")
+        self.assertTrue(CL.verdict(0, 28).startswith("inconclusive"))
+        self.assertGreater(CL.cp_lower(21, 21), 0.86)
+
+    def test_original_rule_is_retained(self):
+        self.assertTrue(CL.verdict_original(0, 26).startswith("insufficient evidence (observed <="))
+        self.assertEqual(CL.verdict_original(10, 50), "observed fail")
+        self.assertEqual(CL.verdict_original(0, 60), "supported")
+        self.assertEqual(CL.verdict_original(4, 50), "within budget, not supported")
 
 
 class HeadWindows(unittest.TestCase):
@@ -50,18 +63,21 @@ class RuleBehaviour(unittest.TestCase):
         cls.dm = CL.decision_map(n_max=60)
         cls.oc = CL.operating_characteristics()
 
-    def test_small_pools_can_only_be_insufficient(self):
+    def test_small_pools_cannot_support_but_can_exceed(self):
         small = self.dm[self.dm.n < CL.n_min(0.10)]
-        self.assertTrue((small.reachable == "insufficient evidence").all())
         self.assertTrue(small.k_supported_max.isna().all())
+        self.assertTrue((small.original_verdict_at_k0 == "insufficient evidence").all())
+        self.assertTrue(small[small.n >= 4].k_exceeded_min.notna().all())
+        self.assertEqual(self.dm[self.dm.n == 21].iloc[0].k_exceeded_min, 6)
 
     def test_all_verdicts_reachable_from_n_min(self):
         big = self.dm[self.dm.n >= CL.n_min(0.10)]
-        for col in ("k_supported_max", "k_within_budget_max", "k_observed_fail_min"):
+        for col in ("k_supported_max", "k_inconclusive_min", "k_exceeded_min"):
             self.assertTrue(big[col].notna().all())
         at29 = self.dm[self.dm.n == 29].iloc[0]
         self.assertEqual(at29.k_supported_max, 0)          # only zero alarms support the claim
-        self.assertEqual(at29.k_observed_fail_min, 3)      # 3/29 > 0.10
+        self.assertEqual(at29.original_k_observed_fail_min, 3)      # 3/29 > 0.10 under the original rule
+        self.assertEqual(at29.k_exceeded_min, 7)           # lower bound above 0.10 needs 7/29
 
     def test_supported_is_never_likely_when_the_true_rate_equals_alpha(self):
         at_alpha = self.oc[self.oc.true_p == 0.10]
@@ -72,7 +88,8 @@ class RuleBehaviour(unittest.TestCase):
         low = self.oc[self.oc.true_p == 0.02].sort_values("n")
         self.assertAlmostEqual(low[low.n == 29].p_supported.iloc[0], 0.557, places=2)
         self.assertGreater(low[low.n == 200].p_supported.iloc[0], 0.99)
-        self.assertGreater(self.oc[(self.oc.true_p == 0.20) & (self.oc.n == 29)].p_observed_fail.iloc[0], 0.9)
+        self.assertGreater(self.oc[(self.oc.true_p == 0.20) & (self.oc.n == 29)].original_p_observed_fail.iloc[0], 0.9)
+        self.assertGreater(self.oc[(self.oc.true_p == 0.30) & (self.oc.n == 29)].p_exceeded.iloc[0], 0.8)
 
     def test_clustering_inflates_support_at_the_boundary(self):
         cs = CL.cluster_sensitivity()

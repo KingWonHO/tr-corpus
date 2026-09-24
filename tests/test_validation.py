@@ -95,7 +95,7 @@ class SplitAndAlarmTests(unittest.TestCase):
 
     def test_changing_label_cannot_change_fitted_alarm_or_threshold(self):
         calls = []
-        def run_fold(d, cols, model, train_idx, eval_idx, seed):
+        def run_fold(d, cols, model, train_idx, eval_idx, seed, horizon=None):
             calls.append((set(d["experiment"][train_idx]), d["experiment"][eval_idx[0]][0]))
             return [np.array([.9]), np.array([.2]), np.array([.1])]
         with patch.object(MW, "panel_experiments", return_value=self.panel), \
