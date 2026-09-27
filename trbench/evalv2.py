@@ -64,6 +64,33 @@ LABELS = {"L2@1.0": "t_onset_L2_1.0", "L2@0.5": "t_onset_L2_0.5",
 PRIMARY = "L2@1.0"
 
 
+# ------------------------------------------------------------ adjudication
+ADJUDICATION = os.path.join(os.path.dirname(HERE), "tr-corpus", "registry", "outcome_adjudication.csv")
+
+
+def adjudicated_mask(ds, y_tr, path=ADJUDICATION):
+    """Protocol 29: a window is *evaluable* when its record's adjudicated
+    physical outcome agrees with its rule label -- a rule-positive record that
+    the source or the trace confirms as runaway, or a rule-negative record the
+    source or the trace confirms as non-runaway.  Indeterminate records, and
+    runaway records whose event the log did not capture, are excluded from
+    every evaluation pool (they stay in training, where the target is the
+    operational rule).  Without the adjudication file every window is evaluable
+    (label v1.0 behaviour)."""
+    if not os.path.exists(path):
+        return np.ones(len(ds), bool)
+    adj = pd.read_csv(path)
+    ds_of = {"D1": "ds01_bak", "D2": "ds02_overcharge", "D3": "ds03_warwick",
+             "D4": "ds04_osf", "D5": "ds09_mech", "D6": "ds12_arc"}
+    fa = {"%s/%s" % (ds_of[a], e): f for a, e, f in
+          zip(adj.dataset, adj.experiment_id, adj.final_assignment)}
+    y = np.asarray(y_tr)
+    want = np.where(y == 1, "positive", "negative")
+    got = np.array([fa.get(k, "unlisted") for k in np.asarray(ds).astype(str)])
+    # records not in the adjudication file (simulated) keep the rule label
+    return (got == want) | (got == "unlisted")
+
+
 # ------------------------------------------------------------------- the plan
 class Plan:
     """Which experiments play which role, fixed before anything is fitted.
@@ -81,12 +108,17 @@ class Plan:
         neg = d["y_tr"] == 0
         split = np.array([key2split.get(k, "?") for k in ds])
         observed = np.asarray(d.get("label_observed", np.ones(len(ds), bool))).astype(bool)
+        # label v1.1: evaluation pools are restricted to adjudicated outcomes
+        evaluable = observed & adjudicated_mask(ds, d["y_tr"])
 
         self.ds = ds
         self.observed = observed
-        self.cal_neg = np.flatnonzero(is_src & neg & observed & (split == "val"))
-        self.test_neg = np.flatnonzero(is_src & neg & observed & (split == "test"))
-        reserved = set(ds[self.cal_neg]) | set(ds[self.test_neg])
+        self.evaluable = evaluable
+        self.cal_neg = np.flatnonzero(is_src & neg & evaluable & (split == "val"))
+        self.test_neg = np.flatnonzero(is_src & neg & evaluable & (split == "test"))
+        # every validation/test negative is kept out of training, whether or
+        # not its outcome was adjudicated as a negative
+        reserved = set(ds[is_src & neg & observed & np.isin(split, ["val", "test"])])
 
         elig = None
         for p in panels:
@@ -102,8 +134,9 @@ class Plan:
         # policy must not silently carry into the fixed external experiment.
         self.frozen_train = self.pool[split[self.pool] == "train"]
         onset = dict(zip(meta.key, meta.t_onset))
+        evaluable_keys = set(ds[evaluable])
         self.folds = [k for k in sorted(self.elig)
-                      if np.isfinite(onset.get(k, np.nan))]
+                      if np.isfinite(onset.get(k, np.nan)) and k in evaluable_keys]
         self.trig = dict(zip(meta.key, meta.t_trigger))
         self.onsets = {name: dict(zip(reg.dataset_id + "/" + reg.experiment_id,
                                       reg[col]))
@@ -239,7 +272,7 @@ def frozen_external(d, meta, reg, models, panel, budget=BUDGET, seed=0,
     ds = plan.ds
     is_t = np.char.startswith(ds, TARGET + "/")
     cols = np.flatnonzero(MW.panel_mask(d["features"], panel))
-    tgt = np.flatnonzero(is_t & plan.observed)
+    tgt = np.flatnonzero(is_t & plan.evaluable)
     onset_p = plan.onsets[PRIMARY]
     if verbose:
         print("  " + plan.describe() + " | ARC %d exp" % len(set(ds[tgt])))

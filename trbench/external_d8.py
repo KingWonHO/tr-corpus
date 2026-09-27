@@ -35,23 +35,23 @@ HERE = Path(__file__).resolve().parent
 ROOT = HERE.parent
 sys.path[:0] = [str(HERE), str(HERE / "adapters")]
 
-OUT = ROOT / "tr-corpus" / "results" / "external_20260922_d8_field"
+OUT = ROOT / "tr-corpus" / "results" / "external_20260925_d8_field"
 EXT = ROOT / "tr-corpus" / "external" / "d8_field"
 ZHANG = ROOT / "Dataset" / "BMS" / "Tsinghua" / "23659323"
 CAO = ROOT / "Dataset" / "BMS"
 
 # protocol section 1 -- must be unchanged at the end of the case
 FROZEN = {
-    "tr-corpus/registry/experiments.csv": "25f303024fa660cdb31fc2fef1db9515a30917a31223b7d2121778f8ad984e3d",
+    "tr-corpus/registry/experiments.csv": "267dc895f5f1438182bc274682ee2ac3a7d68044dc779bb13a741192b01d41d2",
     "tr-corpus/splits/split_assignment.csv": "3109d69118e8fc0db0bc94857894a7e93475538f7d29377a014dbe1ee78a5ff6",
-    "tr-corpus/results/validation_20260914_native_final/calibration.csv": "77a16effd747d45ca13df1f2c4095442807f495594fb3d4987e546a0b89a720f",
-    "tr-corpus/results/validation_20260914_common_surface/calibration.csv": "3ecf5cae83db1bad8fbf48bc824527715ee3d7490c30d8114e22de9aad593422",
-    "tr-corpus/results/validation_20260921_seq_matched/calibration.csv": "2032fcc5458b73f8061a19a01c9833927ed428600bbadfd6140d9e165672e50b",
-    "trbench/common.py": "624ca4be7c7cb9e1290560525c456ed90b4b69e62e20644170ba8c482a0aa09b",
+    "tr-corpus/results/validation_20260925_native/calibration.csv": "7440c96021bb3dfbb21726fa2cba2995cf45b8f8c413f0d118f8d67f1bad1a27",
+    "tr-corpus/results/validation_20260925_common_surface/calibration.csv": "62bb38069465fcfbac66aa7e83527a195f5ff5c9abda2410258ad40709a3df0f",
+    "tr-corpus/results/validation_20260925_seq/calibration.csv": "84ad5939c31735aa7495b2425a1d77bdd5f0abdd56e9c8161d8a7f6c31043b4c",
+    "trbench/common.py": "b813a239541381ced60f72ad1b23c1a9e85ce61edf49cb6042f045010167a29f",
     "trbench/native_windows.py": "ff8faa62beac44de281deb2530ae26cabfa4462774dc8bf884d3762a9857177a",
     # run_validation.py re-pinned 2026-09-24 after adding the --horizon option and the
     # mask_only / age_only shortcut-control arms; the scoring functions reused here are unchanged.
-    "trbench/run_validation.py": "c27f0e680fe4b991a54815a8c4485dd8fe44f71c82f9e91d79d79366e21b5f18",
+    "trbench/run_validation.py": "24625ff105d4e461c0bf0c3071b9a9d90e60863b283c059e937e263a74970c52",
     "trbench/schema.py": "56393ca4fcba95e081a145d46735e072e066c4717e859516b0bd132645654a90",
 }
 
@@ -81,12 +81,12 @@ CAO_NOMINAL_FRAME_S = 30.0
 
 ARMS = ("no_age", "with_age", "surface_max_only", "surface_mean_only")
 TREE_CAL = {
-    "no_age": "tr-corpus/results/validation_20260914_native_final/calibration.csv",
-    "with_age": "tr-corpus/results/validation_20260914_native_final/calibration.csv",
-    "surface_max_only": "tr-corpus/results/validation_20260914_common_surface/calibration.csv",
-    "surface_mean_only": "tr-corpus/results/validation_20260914_common_surface/calibration.csv",
+    "no_age": "tr-corpus/results/validation_20260925_native/calibration.csv",
+    "with_age": "tr-corpus/results/validation_20260925_native/calibration.csv",
+    "surface_max_only": "tr-corpus/results/validation_20260925_common_surface/calibration.csv",
+    "surface_mean_only": "tr-corpus/results/validation_20260925_common_surface/calibration.csv",
 }
-SEQ_CAL = "tr-corpus/results/validation_20260921_seq_matched/calibration.csv"
+SEQ_CAL = "tr-corpus/results/validation_20260925_seq/calibration.csv"
 SEEDS = (0, 1, 2, 3, 4)
 
 

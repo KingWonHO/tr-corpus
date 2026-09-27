@@ -39,21 +39,20 @@ import run_validation as RV   # noqa: E402  (scoring rules reused, not re-implem
 import survival as SV         # noqa: E402
 
 RES = ROOT / "tr-corpus" / "results"
-OUT = RES / "claims_20260924"   # amended verdict rule; claims_20260921 holds the pre-registered run
+OUT = RES / "claims_20260925"   # amended verdict rule; claims_20260921 holds the pre-registered run
 WIN = ROOT / "tr-corpus" / "windows" / "W60_native"
 SPLITS = ("train", "val", "test", "test_zeroshot")      # order of the stored indices
-RUNS = {"native_final": RES / "validation_20260914_native_final",
-        "common_surface": RES / "validation_20260914_common_surface",
+RUNS = {"native_final": RES / "validation_20260925_native",
+        "common_surface": RES / "validation_20260925_common_surface",
         # the four sequence models on the same build and representations (protocol 20)
-        "seq_matched": RES / "validation_20260921_seq_matched"}
+        "seq_matched": RES / "validation_20260925_seq"}
 MAIN_RUNS = ("native_final", "seq_matched")          # sensor values only, source max
 LEARNED = ("xgboost", "lightgbm", "gru", "mamba", "itransformer", "convtransformer")
 SEQ = ("gru", "mamba", "itransformer", "convtransformer")
 # Internal design: the frozen tree files re-scored together with the matched
 # sequence-model run, so the tree rows are byte-identical to the 2026-09-15 set.
-E3A = [RES / "validation_20260921_all7_rescored" / f
-       for f in ("validation_20260914_e3a_native.csv", "validation_20260914_e3a_native_xgb_s1to4.csv",
-                 "validation_20260914_e3a_native_lgb_s1to4.csv", "e3a_seq_s0to4.csv")]
+E3A = [RES / "validation_20260925_all7_rescored" / f
+       for f in ("e3a_trees_s0to4.csv", "e3a_seq_s0to4.csv")]
 TARGET = "ds12_arc"
 
 ALPHA = 0.10
@@ -67,25 +66,21 @@ EVENT_SETS = {"L2@1.0": ["L2@1.0"],
               "E_vent": ["L1 venting"]}
 
 FROZEN = {
-    "tr-corpus/results/validation_20260921_all7_rescored/validation_20260914_e3a_native.csv": "cd0cb4c826fa841ba6f0965636c94efee047cf954f67887b8fa0100fc8b22061",
-    "tr-corpus/results/validation_20260921_all7_rescored/validation_20260914_e3a_native_xgb_s1to4.csv": "e7e58dde9577f51e5ebdc1c99c376780991fe0561d85cef78836d60d4d3b5ddb",
-    "tr-corpus/results/validation_20260921_all7_rescored/validation_20260914_e3a_native_lgb_s1to4.csv": "300b3023a1db9b2753817f77a3069a2f13019b66622399e85c1b379bac7fad3f",
-    "tr-corpus/results/validation_20260921_all7_rescored/e3a_seq_s0to4.csv": "f234bf3ffef7b6148846382b5665020080e6436fb818caf47c0df7627782e98a",
-    "tr-corpus/registry/experiments.csv": "25f303024fa660cdb31fc2fef1db9515a30917a31223b7d2121778f8ad984e3d",
+    "tr-corpus/results/validation_20260925_all7_rescored/e3a_trees_s0to4.csv": "d71565991b64abad43ce9be29b8c8bfa22846707381fc54a5777747db7af4566",
+    "tr-corpus/results/validation_20260925_all7_rescored/e3a_seq_s0to4.csv": "ec523f09a162344ee7749f703c2e2371c48995ffedb105ee44eb3069542c66d2",
+    "tr-corpus/registry/experiments.csv": "267dc895f5f1438182bc274682ee2ac3a7d68044dc779bb13a741192b01d41d2",
     "tr-corpus/splits/split_assignment.csv": "3109d69118e8fc0db0bc94857894a7e93475538f7d29377a014dbe1ee78a5ff6",
-    "tr-corpus/results/validation_20260914_native_final/calibration.csv": "77a16effd747d45ca13df1f2c4095442807f495594fb3d4987e546a0b89a720f",
-    "tr-corpus/results/validation_20260914_common_surface/calibration.csv": "3ecf5cae83db1bad8fbf48bc824527715ee3d7490c30d8114e22de9aad593422",
-    "tr-corpus/windows/W60_native/val.npz": "c7dc9c08695ce5e2e774c7ba136f08e1383e493feb69b268ace17f8680b1c125",
-    "tr-corpus/windows/W60_native/test.npz": "537ed728222e1c37e8fa62a66dc6f6d20a672af93b0456ce0b471240ac81e046",
-    "tr-corpus/windows/W60_native/test_zeroshot.npz": "86e8d3a6f521437751088bbfb84bfc31fc37dbcef0f372c8b1f295d1f7931a3e",
-    "tr-corpus/windows/W60_native/train.npz": "56b7e76b53ee0d5cfa6854266d0c66d25df9a3128a673eb491b15ecbf2551e7f",
-    "tr-corpus/results/validation_20260915_e3a_d3_relabel/validation_20260914_e3a_native.csv": "9c1b526a062538168d1ec3fd78e28a76f36f5851be7a8ccf17487aface67d164",
-    "tr-corpus/results/validation_20260915_e3a_d3_relabel/validation_20260914_e3a_native_xgb_s1to4.csv": "1adaaca183441a92bbec2e7343ce48a7be109d61e8508e4fb4d25139d65e653e",
-    "tr-corpus/results/validation_20260915_e3a_d3_relabel/validation_20260914_e3a_native_lgb_s1to4.csv": "a003457b57032be23b34e65b69d6985e9d4a76eb72ffef567e66324d95be5bb1",
+    "tr-corpus/results/validation_20260925_native/calibration.csv": "7440c96021bb3dfbb21726fa2cba2995cf45b8f8c413f0d118f8d67f1bad1a27",
+    "tr-corpus/results/validation_20260925_common_surface/calibration.csv": "62bb38069465fcfbac66aa7e83527a195f5ff5c9abda2410258ad40709a3df0f",
+    "tr-corpus/windows/W60_native/val.npz": "eb8242a33d4cc878e07c06b8ce9aa682b015d3e997803001193cf305c3a0a035",
+    "tr-corpus/windows/W60_native/test.npz": "c8abc9afcaad24b95edaf11c0af871a451e4a7e104d0acdbdd6a294ae4d6be6b",
+    "tr-corpus/windows/W60_native/test_zeroshot.npz": "08f0de113e4a3fead194b8138887ef5af2a455241f0d2e1ff2b79a144147be89",
+    "tr-corpus/windows/W60_native/train.npz": "f94c2f3f3749627bf8233024b5758678560b2536f9b0ecb61ccfee71e0ab4033",
+    "trbench/evalv2.py": "c93ff043867ccfd0aea34f792a2e62b30a0f17bfa93bca1aa2b0735bdbef4d42",
     "trbench/survival.py": "c4544d471c9d2f5b7309f3464c52ee788caa6f062c49e14a33920d5aa70c1f73",
     # run_validation.py re-pinned 2026-09-24 after adding the --horizon option and the
     # mask_only / age_only shortcut-control arms; the scoring functions reused here are unchanged.
-    "trbench/run_validation.py": "c27f0e680fe4b991a54815a8c4485dd8fe44f71c82f9e91d79d79366e21b5f18",
+    "trbench/run_validation.py": "24625ff105d4e461c0bf0c3071b9a9d90e60863b283c059e937e263a74970c52",
 }
 
 
@@ -635,7 +630,7 @@ def h_contrast(d, plan):
     return pd.DataFrame(rows)
 
 
-SPLIT_SENS = RES / "validation_20260918_split_sensitivity"
+SPLIT_SENS = RES / "validation_20260925_split_sensitivity"
 
 
 def split_sensitivity(d, plan):

@@ -5,7 +5,7 @@ in reports/11_d7_gardner_audit_protocol.md before the files were downloaded.
     uv run python trbench/external_d7.py alarms      # frozen held-dataset alarms
 
 Nothing here reads or writes tr-corpus/registry/experiments.csv.  Outputs go
-to tr-corpus/results/external_20260915_d7_gardner/ and
+to tr-corpus/results/external_20260925_d7_gardner/ and
 tr-corpus/external/d7_gardner/.
 """
 from __future__ import annotations
@@ -26,17 +26,17 @@ import common as C            # noqa: E402
 import schema as S            # noqa: E402
 import d7_gardner as G        # noqa: E402
 
-OUT = ROOT / "tr-corpus" / "results" / "external_20260915_d7_gardner"
+OUT = ROOT / "tr-corpus" / "results" / "external_20260925_d7_gardner"
 EXT = ROOT / "tr-corpus" / "external" / "d7_gardner"
 
 # protocol section 1 -- must be unchanged at the end of the audit
 FROZEN = {
-    "tr-corpus/registry/experiments.csv": "25f303024fa660cdb31fc2fef1db9515a30917a31223b7d2121778f8ad984e3d",
+    "tr-corpus/registry/experiments.csv": "267dc895f5f1438182bc274682ee2ac3a7d68044dc779bb13a741192b01d41d2",
     "tr-corpus/splits/split_assignment.csv": "3109d69118e8fc0db0bc94857894a7e93475538f7d29377a014dbe1ee78a5ff6",
-    "tr-corpus/results/validation_20260914_native_final/calibration.csv": "77a16effd747d45ca13df1f2c4095442807f495594fb3d4987e546a0b89a720f",
-    "trbench/common.py": "624ca4be7c7cb9e1290560525c456ed90b4b69e62e20644170ba8c482a0aa09b",
+    "tr-corpus/results/validation_20260925_native/calibration.csv": "7440c96021bb3dfbb21726fa2cba2995cf45b8f8c413f0d118f8d67f1bad1a27",
+    "trbench/common.py": "b813a239541381ced60f72ad1b23c1a9e85ce61edf49cb6042f045010167a29f",
     "trbench/native_windows.py": "ff8faa62beac44de281deb2530ae26cabfa4462774dc8bf884d3762a9857177a",
-    "trbench/run_validation.py": "139ce380ef2b39eb1e2b3957a816ffe2b9a62c45f90e905e2baedee4e034d95a",
+    "trbench/run_validation.py": "24625ff105d4e461c0bf0c3071b9a9d90e60863b283c059e937e263a74970c52",
     "trbench/schema.py": "56393ca4fcba95e081a145d46735e072e066c4717e859516b0bd132645654a90",
 }
 
@@ -267,7 +267,7 @@ def run_alarms():
         print(res.to_string(index=False))
 
 
-FROZEN_CAL = "tr-corpus/results/validation_20260914_native_final/calibration.csv"
+FROZEN_CAL = "tr-corpus/results/validation_20260925_native/calibration.csv"
 
 
 def RV_BUDGET(RV):

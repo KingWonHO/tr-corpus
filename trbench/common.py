@@ -427,11 +427,23 @@ def standardize(raw, hz=S.BASE_HZ):
             if c in cols and np.isfinite(cols[c]).sum() >= 5:
                 Tprobe, Tname = cols[c], c
                 break
-    # the aggregate inherits its members' ceiling
+    # The aggregate inherits its members' ceiling.  Label v1.1 (2026-09-25):
+    # only a SURFACE member pinned at a value that a runaway could plausibly
+    # saturate (>= floor + confirmation rise, 110 degC; the infrared cap of D5
+    # is 150.24 degC) counts as an instrument ceiling.  v1.0 accepted any pinned
+    # T_* channel, so a heater-power pseudo-channel (D6, 0.9-17 degC), an
+    # ambient probe (D5, 17-23 degC) or a dead surface thermocouple (D5,
+    # 23-54 degC) set a ceiling below the trace and switched the +50 degC
+    # confirmation off; 8 of 153 L2 labels rested on that (reports/27, S2h).
     ceiling = censored.get(Tname)
     if ceiling is None and Tname == "T_surface_max" and censored:
-        hits = [v for k, v in censored.items() if k.startswith("T_")]
+        hits = [v for k, v in censored.items()
+                if k.startswith("T_surface") and v >= S.L2_T_FLOOR + S.L2_RISE_MIN]
         ceiling = max(hits) if hits else None
+    if ceiling is not None and ceiling < S.L2_T_FLOOR + S.L2_RISE_MIN:
+        raw.notes.append("pinned %s at %.1f degC ignored as an L2 ceiling (below %.0f degC)"
+                         % (Tname, ceiling, S.L2_T_FLOOR + S.L2_RISE_MIN))
+        ceiling = None
     if raw.t_trigger is not None:
         # t0 is the earliest sample across channels; several datasets index
         # their first sample as t=1, so rebasing a trigger of 0 would give -1.

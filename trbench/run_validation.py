@@ -159,9 +159,10 @@ def run(d, meta, reg, models, seeds, age_modes, out, n_boot=1000, budget=.1,
         horizon=R.HORIZON_S):
     plan = V.Plan(d, meta, reg, ["M1"])
     target = np.char.startswith(plan.ds, V.TARGET + "/")
-    src_pos = np.flatnonzero((d["split"] == "test") & ~target & (d["y_tr"] == 1) & plan.observed)
-    arc = np.flatnonzero(target & plan.observed)
-    arc_neg = np.flatnonzero(target & (d["y_tr"] == 0) & plan.observed)
+    # label v1.1 (protocol 29): only adjudicated records enter the evaluation pools
+    src_pos = np.flatnonzero((d["split"] == "test") & ~target & (d["y_tr"] == 1) & plan.evaluable)
+    arc = np.flatnonzero(target & plan.evaluable)
+    arc_neg = np.flatnonzero(target & (d["y_tr"] == 0) & plan.evaluable)
     y, w = SV.discrete_hazard_targets(d["y_time"], d["y_event"], horizon)
     membership = []
     for role, idx in [("train", plan.frozen_train), ("calibration", plan.cal_neg),
