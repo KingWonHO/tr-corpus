@@ -305,7 +305,7 @@ def operating_characteristics(alpha=ALPHA):
     unknown probability p; k ~ Binomial(n, p).  No simulation: the verdict is a
     deterministic function of k, so its probability is a sum of binomial terms.
     """
-    ns = [10, 21, 25, 26, 28, 29, 35, 40, 50, 75, 100, 150, 200, 300]
+    ns = [10, 13, 21, 25, 26, 27, 28, 29, 35, 40, 50, 75, 100, 150, 200, 300]   # 13 and 27: the primary D6 and source check pools
     ps = [0.01, 0.02, 0.05, 0.10, 0.15, 0.20, 0.30]
     rows = []
     for n in ns:

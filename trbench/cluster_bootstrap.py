@@ -37,7 +37,7 @@ REG = ROOT / "tr-corpus" / "registry" / "experiments.csv"
 
 # Held-dataset negatives of the trees and of the four sequence models (same build,
 # sensor values only); concatenated by _read_neg().
-NEG_RUNS = (RES / "validation_20260914_native_final", RES / "validation_20260921_seq_matched")
+NEG_RUNS = (RES / "validation_20260925_native", RES / "validation_20260925_seq")
 NEG_CELLS = [d / "negative_cells.csv" for d in NEG_RUNS]
 NEG_COMPARE = [d / "negative_comparisons.csv" for d in NEG_RUNS]
 
@@ -46,14 +46,11 @@ def _read_neg(paths):
     frames = [pd.read_csv(p) for p in paths]
     return pd.concat(frames, ignore_index=True)
 # Internal design, all six learned models on identical inputs (protocol 20).
-E3A_RAW = [RES / "validation_20260921_all7_rescored" / f
-           for f in ("validation_20260914_e3a_native.csv",
-                     "validation_20260914_e3a_native_xgb_s1to4.csv",
-                     "validation_20260914_e3a_native_lgb_s1to4.csv",
-                     "e3a_seq_s0to4.csv")]
-E3A_PAIRS = RES / "summary_20260921_all7" / "panel_pairs.csv"
+E3A_RAW = [RES / "validation_20260925_all7_rescored" / f
+           for f in ("e3a_trees_s0to4.csv", "e3a_seq_s0to4.csv")]
+E3A_PAIRS = RES / "summary_20260925_all7" / "panel_pairs.csv"
 LEARNED = ("xgboost", "lightgbm", "gru", "mamba", "itransformer", "convtransformer")
-OUT = RES / "summary_20260921_cluster_bootstrap"
+OUT = RES / "summary_20260925_cluster_bootstrap"
 
 N_BOOT = 10_000
 SEED = 20260915

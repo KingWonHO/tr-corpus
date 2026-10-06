@@ -144,7 +144,7 @@ def _prep(X, M, mu, sd):
     return np.concatenate([Xs, M.astype(np.float32)], axis=2).astype(np.float32)
 
 
-def fit_seq(name, Xtr, Mtr, ytr, wtr, seed=0, epochs=EPOCHS, verbose=False):
+def fit_seq(name, Xtr, Mtr, ytr, wtr, seed=0, epochs=EPOCHS, verbose=False, on_epoch=None):
     """Fit one sequence model on a training fold -> risk-scoring callable.
 
     Windows with zero weight are post-onset or otherwise unlabelled; they are
@@ -198,6 +198,10 @@ def fit_seq(name, Xtr, Mtr, ytr, wtr, seed=0, epochs=EPOCHS, verbose=False):
             tot += float(l)
         if verbose:
             print("      %s ep%d loss %.4f" % (name, ep, tot / steps))
+        if on_epoch is not None:
+            # diagnostics only (review 2026-10-03): never alters training
+            on_epoch(ep, tot / steps, net, mu, sd, dev)
+            net.train()
 
     net.eval()
 

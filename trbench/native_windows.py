@@ -592,7 +592,8 @@ def build(out_dir=OUT / "windows" / "W60_native", datasets=None,
         # total).  Keep room for that audited difference while retaining a hard
         # bound: a larger, unreviewed source change must fail rather than resize
         # and copy a multi-gigabyte map implicitly.
-        capacity = expected + max(1024, len(rr) * 4)
+        # the audited slack is counted in 10 s endpoints; a finer stride scales it
+        capacity = expected + max(1024, len(rr) * 4) * max(1, STRIDE_S // stride_s)
         buffers[split] = _allocate_split(
             stage, split, capacity, window_s, key_chars, trigger_chars)
 
