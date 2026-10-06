@@ -2,7 +2,7 @@
 
 Code for *Conditions for comparable thermal-runaway early warning in lithium-ion batteries: a public corpus and evaluation framework* (submitted to eTransportation, 2026). The paper describes the method; this repository lets you rebuild the corpus and rerun the experiments.
 
-The harmonized corpus is on Zenodo: [10.5281/zenodo.22908328](https://doi.org/10.5281/zenodo.22908328) (CC BY 4.0). From version 1.1.0 the Zenodo deposit holds **data only**; all code, including the corpus builder, is here, and the stored outputs of the reported runs are attached to this repository's releases.
+The harmonized corpus is on Zenodo: [10.5281/zenodo.23181869](https://doi.org/10.5281/zenodo.23181869) (version 1.1.0, CC BY 4.0; version 1.0.0: [10.5281/zenodo.22908328](https://doi.org/10.5281/zenodo.22908328)). From version 1.1.0 the Zenodo deposit holds **data only**; all code, including the corpus builder, is here, and the stored outputs of the reported runs are attached to this repository's releases.
 
 ## Setup
 
