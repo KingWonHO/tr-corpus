@@ -1,8 +1,21 @@
 # tr-corpus
 
-Code for *Conditions for comparable thermal-runaway early warning in lithium-ion batteries: a public corpus and evaluation framework* (submitted to eTransportation, 2026). The paper describes the method; this repository lets you rebuild the corpus and rerun the experiments.
+Code and stored evaluation outputs for *Evaluating thermal runaway early warning
+in lithium-ion batteries: A framework for lead time, false alarms and validation
+planning*.
 
-The harmonized corpus is on Zenodo: [10.5281/zenodo.23181869](https://doi.org/10.5281/zenodo.23181869) (version 1.1.0, CC BY 4.0; version 1.0.0: [10.5281/zenodo.22908328](https://doi.org/10.5281/zenodo.22908328)). From version 1.1.0 the Zenodo deposit holds **data only**; all code, including the corpus builder, is here, and the stored outputs of the reported runs are attached to this repository's releases.
+The [Zenodo deposit](https://doi.org/10.5281/zenodo.23181869) provides the harmonized
+input data, labels and experiment roles under CC BY 4.0. Evaluation and corpus
+build code is provided here under MIT.
+
+## Download the evaluation outputs
+
+The [results release](https://github.com/KingWonHO/tr-corpus/releases/tag/v1.2.0)
+contains stored alarms, thresholds, available per-window risks, table sources,
+analysis scripts and physical-timeline panels. It includes the complete five-seed
+120 s-horizon sequence-model results, the 12-epoch internal experiments and the
+additional sensitivity analyses. See [RESULTS_README.md](RESULTS_README.md) for
+the file map, reproduction commands and checksums.
 
 ## Setup
 
