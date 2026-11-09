@@ -1,87 +1,63 @@
 # tr-corpus
 
-Code and stored evaluation outputs for *Evaluating thermal runaway early warning
-in lithium-ion batteries: A framework for lead time, false alarms and validation
-planning*.
+Code for *Evaluating lithium-ion battery thermal-runaway early warning across event definitions, data roles and
+test conditions*. The harmonized input data are on Zenodo ([10.5281/zenodo.23181869](https://doi.org/10.5281/zenodo.23181869));
+this repository holds only code. Earlier analyses (internal LOEO validation, external cases D7 and D8) are in
+release [v1.2.0](https://github.com/KingWonHO/tr-corpus/tree/v1.2.0).
 
-The [Zenodo deposit](https://doi.org/10.5281/zenodo.23181869) provides the harmonized
-input data, labels and experiment roles under CC BY 4.0. Evaluation and corpus
-build code is provided here under MIT.
+## Folder structure
 
-## Download the evaluation outputs
-
-The [results release](https://github.com/KingWonHO/tr-corpus/releases/tag/v1.2.0)
-contains stored alarms, thresholds, available per-window risks, table sources,
-analysis scripts and physical-timeline panels. It includes the complete five-seed
-120 s-horizon sequence-model results, the 12-epoch internal experiments and the
-additional sensitivity analyses. See [RESULTS_README.md](RESULTS_README.md) for
-the file map, reproduction commands and checksums.
+```
+main.py            entry point: one --exp name per step
+core/              shared library: windows, survival targets and thresholds, models, fitting, perturbations
+preprocess/        Zenodo corpus -> cohort, folds, role memberships, task inputs (README inside)
+experiments/       one class per experiment
+configs/           fixed inputs from earlier analyses (outcome reconciliation, native sampling, model shortlist, protocols)
+data/              downloaded inputs, not tracked (README inside)
+results/           outputs, not tracked
+```
 
 ## Setup
 
 ```bash
-uv sync            # Python 3.11, pinned by uv.lock
+uv sync                      # Python 3.11, torch 2.11 (CUDA 12.8), XGBoost 3.2, LightGBM 4.7, pinned in uv.lock
 ```
 
-## Get the data
+Place the Zenodo corpus in `data/tr-corpus` and, for the native-rate rule, the KIT ARC files in `data/raw/ds12_arc`
+(see `data/README.md`).
 
-Either download the harmonized corpus from Zenodo and place its `tr-corpus/` folder next to `trbench/`, or rebuild it from the raw sources. The raw datasets are not redistributed; download each from its DOI into `Dataset/<id>/`:
+## Usage
 
-| `Dataset/<id>` | Source | DOI |
+```bash
+uv run python main.py --exp preprocess
+uv run python main.py --exp common_cohort
+uv run python main.py --exp task_comparison
+uv run python main.py --exp robustness          # any of the re-scoring experiments, after task_comparison
+uv run python main.py --exp <name> --help       # options of one experiment
+```
+
+`preprocess` runs first, then `common_cohort` and `task_comparison`. The other experiments only read the stored
+task states and decisions in `results/task_comparison`, and can run in any order. Outputs go to `results/<name>`.
+
+## Experiments
+
+| `--exp` | Analysis | Main outputs (article item) |
 |---|---|---|
-| `1` | Golubkov, BAK N21700CG-50 at 60 % SOC (Virtual Vehicle) | 10.5281/zenodo.18849418 |
-| `2` | Shen, overcharge of prismatic LFP | 10.17632/8zjttd77my.1 |
-| `3` | Gulsoy et al., internal temperature and gas pressure (WMG) | 10.17632/rgfhdhcd9k.1 |
-| `4` | Kwak et al., multi-modal TR of fresh and aged cells | 10.17605/OSF.IO/C2HNQ |
-| `9` | Lin et al., mechanically induced TR (ORNL/Sandia), Mendeley Data V2 | 10.17632/sn2kv34r4h.2 |
-| `12` | Ohneseit et al., ARC data (KIT), three records | 10.5281/zenodo.14956641, 7707929, 14956635 |
-| `15` | Kriston et al., numerical simulation (pretraining only; not used by any reported analysis and not in the Zenodo v1.1.0 deposit) | 10.17632/9cykcc3svn.2 |
-| `16_gardner` | Gardner et al., trace-H2 mitigation (external case D7) | 10.6084/m9.figshare.28677122.v2 |
-| `BMS/Tsinghua`, `BMS/{DTI,GIS,QAS}` | Zhang et al.; Cao et al., EV field data (external case D8) | 10.6084/m9.figshare.23659323; 10.5281/zenodo.10656500 |
+| `preprocess` | cohort, adjudicated outcomes, design and record folds, four-role memberships, task plans and inputs | `results/preprocess/{cohort,roles,tasks}` |
+| `common_cohort` | four-role audit on 77 positives and 173 negatives: XGBoost, GRU, Mamba and two rules under design vs record splits, calibration evidence, 60/300 s horizons, post-trigger fitting; fixed-alarm re-scoring against L3 (`--stage fit,analyze,check`) | `summary.csv` (split, evidence and control tables), `reference_flips.csv` (Fig. 5), `fit_diagnostics.csv`, `per_record.parquet` |
+| `task_comparison` | task-specific comparisons (heating/overcharge, indentation, Li-ion ARC) with fitting additions: LightGBM, XGBoost, LSTM, GRU, grid rules and the native-rate rule, 5 folds x 5 seeds (`--stage fit,native_rate,analyze,audit,replay,interpret`) | `primary_summary.csv` (task table, Fig. 4, Table S5), `summary_seed.csv` (Fig. 6), `evidence_strata.csv`, `opportunity_constraints*.csv`, `paired_model_rule.csv`, `per_record.parquet` |
+| `alarm_timing` | first-decision alarms, after-crossing successes, false-alarm timing and ARC negative state | `alarm_timing_summary.csv`, `false_alarm_*.csv`, `arc_negative_state.csv` (Fig. 7) |
+| `explanation` | feature attribution of the stored task models | `explain_importance.csv` |
+| `robustness` | sensor noise, bias, sample-and-hold and delay at stored and recalibrated thresholds, incl. the native-rate rule | `robustness_summary.csv`, `robustness_native_summary.csv`, `latency_summary.csv` |
+| `cadence` | stored states re-scored at a 1 s decision cadence | `r3_cadence_1s.csv` |
+| `supplements` | requirement bounds, chemistry/format strata, opportunity windows, compute per decision | `requirement_bounds.csv`, `strata_chemistry_format.csv`, `opportunity_windows.csv`, `compute_per_decision.csv` |
+| `review` | revision analyses: alternative events (GB 38031-style), combined perturbations, severity, calibration expectation, design-unit bounds, initial temperature, budget area, seeds, model size, bootstrap (`--jobs`) | `r3_*.csv`, `r3_event_variants.json` |
+| `refits` | targeted refits: ARC noise augmentation, fresh-sample summaries, no window cap, D1 replay and source balance, D5 window-mean removal (`--variants`) | `retrain_r3_*_seed.csv`, `retrain_r3_d1_replay_check.csv` |
 
-```bash
-uv run python trbench/build_corpus.py      # adapters -> harmonized 1 s records + registry
-uv run python trbench/make_splits.py       # frozen experiment roles
-uv run python trbench/make_windows.py      # W60_native window builds
-uv run python trbench/validate_corpus.py   # schema, time-axis and label checks
-```
-
-`trbench/claims.py` pins `registry/experiments.csv` and `splits/split_assignment.csv` by SHA-256, so a rebuild that matches those hashes reproduces the paper's inputs exactly.
-
-## Run the experiments
-
-```bash
-uv run python -m pytest -q tests
-uv run python trbench/run_v2.py                    # internal leave-one-experiment-out design
-uv run python trbench/rescore_fixed_alarm.py       # re-score the issued alarms under every reference event
-uv run python trbench/summarize_v2.py
-uv run python trbench/run_validation.py            # held-dataset design, seven models, seeds 0-4
-uv run python trbench/cluster_bootstrap.py         # cell-model bootstrap
-uv run python trbench/run_split_sensitivity.py     # alternative negative allocation
-uv run python trbench/claims.py all                # required lead and false-alarm evidence
-uv run python trbench/external_d7.py events; uv run python trbench/external_d7.py alarms
-uv run python trbench/external_d8.py index; uv run python trbench/external_d8.py accounting; uv run python trbench/external_d8.py score
-```
-
-Outputs go to `tr-corpus/results/`.
-
-### Sensitivity analyses for the external review (October 2026)
-
-```bash
-uv run python trbench/native_windows.py --out tr-corpus/windows/W60_native_s1 --splits train,val,test --stride 1
-uv run python trbench/run_review_20261006.py cadence --models rule,xgboost,lightgbm --out tr-corpus/results/review_20261006/cadence/e3a_trees_cadence_s0to4.csv
-uv run python trbench/run_review_20261006.py disputed --models rule,xgboost,lightgbm --out tr-corpus/results/review_20261006/disputed/e3a_trees_disputed_s0to4.csv
-uv run python trbench/run_review_20261006.py disputed-heldout --models rule,xgboost,lightgbm,gru,mamba,itransformer,convtransformer --out tr-corpus/results/review_20261006/disputed_heldout
-uv run python trbench/run_convergence_20261006.py --out tr-corpus/results/review_20261006/convergence
-uv run python trbench/run_epochs_internal_20261006.py --epochs 12 -- --arm e3a --models gru --windows W60_native --without-age --seeds 0,1,2,3,4 --out tr-corpus/results/review_20261006/epochs_internal/e3a_gru_ep12_s0to4.csv
-uv run python trbench/run_fixed_rules_20261006.py --out tr-corpus/results/review_20261006/fixed_rules            # add --calibrated for the 10 % budget
-uv run python trbench/run_d8_layout_control.py
-```
-
-`cadence` scores the held cell on windows ending every 1 s with models fitted exactly as the stored internal run; `disputed` moves the two source-stated non-runaway test records that satisfy L2 into the check negatives; `run_convergence` refits the sequence probes for 6, 12 and 24 epochs with per-epoch loss logging; `run_fixed_rules` scores fixed and calibrated surface-temperature thresholds under the same evaluation; `run_d8_layout_control` holds the D8 target tensor fixed while the source representation changes. These are exploratory analyses run after the evaluation design was fixed.
-
-The convolution–Transformer does not refit bit-identically on GPU (cuDNN convolution kernels); all other models reproduce their stored thresholds to 1e-9.
+Fits are deterministic (fixed seeds, deterministic cuDNN, CPU trees with 4 threads). Refits of sampled settings
+reproduced the article's stored states bit for bit with the pinned environment on an RTX 5080. CPU timings in
+`compute_per_decision.csv` depend on the machine.
 
 ## Licence
 
-MIT (`LICENSE`). The corpus and its six source datasets keep their own licences (CC BY 4.0 / CC0).
+MIT (`LICENSE`). The corpus on Zenodo is CC BY 4.0; the original source datasets keep their own licences.

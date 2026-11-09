@@ -1,9 +1,8 @@
 # Code licence (MIT)
 
-This licence covers the code in this repository: `trbench/`, `paper/*.py`,
-`tests/`, `tools/` and the build configuration. The harmonized corpus under
-`tr-corpus/` is covered separately by `tr-corpus/LICENSE` (CC BY 4.0), and the
-raw source datasets remain under their own licences (`tr-corpus/ATTRIBUTION.md`).
+This licence covers the code in this repository. The harmonized corpus on Zenodo
+(https://doi.org/10.5281/zenodo.23181869) is CC BY 4.0, and the original source
+datasets keep their own licences.
 
 MIT License
 

@@ -1,0 +1,2 @@
+# fixed inputs are hashed: check them out byte for byte on every platform
+configs/** -text
